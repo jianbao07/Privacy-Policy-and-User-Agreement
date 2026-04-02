@@ -20,13 +20,10 @@
         language = 'zh';
       }
     }
-
-    var basePath = location.href.split('?')[0].replace(/\/[^/]*$/, '/');
-
     ['content_type', 'language', 'pack_name', 'app_name'].forEach(function(k){ sp.delete(k); });
     var queryStr = sp.toString() ? '?' + sp.toString() : '';
 
-    location.replace(basePath + packName + '/' + contentType + '_' + language + '.html' + queryStr);
+    location.replace('./' + packName + '/' + contentType + '_' + language + '.html' + queryStr);
   })();
 </script>
 </body>
