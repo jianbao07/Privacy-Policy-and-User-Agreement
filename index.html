@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文档分发</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0c10;
+      --surface: #12151c;
+      --border: #1e2330;
+      --accent: #4f8cff;
+      --accent-dim: rgba(79,140,255,0.12);
+      --text: #e8ecf4;
+      --muted: #5a6072;
+      --success: #34d399;
+      --warn: #fbbf24;
+      --error: #f87171;
+      --radius: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'SF Pro Display', 'PingFang SC', 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    /* animated bg grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(79,140,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,140,255,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -30%;
+      left: -10%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(ellipse at center, rgba(79,140,255,0.07) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 44px;
+      width: 100%;
+      max-width: 540px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 32px 64px rgba(0,0,0,0.5);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(79,140,255,0.25);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 100px;
+      margin-bottom: 20px;
+    }
+
+    .badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    /* ---- status area ---- */
+    .status-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 24px;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-size: 13px;
+      animation: fadeSlide 0.25s ease;
+    }
+
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .status-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      min-width: 90px;
+      flex-shrink: 0;
+    }
+
+    .status-value {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .tag-ua   { background: rgba(167,139,250,0.15); color: #a78bfa; border: 1px solid rgba(167,139,250,0.3); }
+    .tag-pp   { background: rgba(52,211,153,0.12);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+    .tag-miss { background: rgba(248,113,113,0.12); color: var(--error); border: 1px solid rgba(248,113,113,0.3); }
+
+    /* ---- target url ---- */
+    .url-preview {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      word-break: break-all;
+      line-height: 1.8;
+      margin-bottom: 24px;
+      min-height: 56px;
+      transition: border-color 0.2s;
+    }
+
+    .url-preview .hl-path  { color: #60a5fa; }
+    .url-preview .hl-file  { color: #a78bfa; }
+    .url-preview .hl-query { color: #34d399; }
+
+    /* ---- redirect bar ---- */
+    .redirect-bar {
+      height: 3px;
+      border-radius: 2px;
+      background: var(--border);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .redirect-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #818cf8);
+      border-radius: 2px;
+      transition: width 0.05s linear;
+    }
+
+    /* ---- action ---- */
+    .action {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: -0.01em;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 24px rgba(79,140,255,0.3);
+    }
+
+    .btn-primary:hover  { background: #6ba3ff; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { background: #1e2330; color: var(--muted); cursor: not-allowed; box-shadow: none; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+    /* ---- error notice ---- */
+    .notice {
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.25);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--error);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .notice.show { display: flex; }
+    .notice-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+    .missing-list {
+      display: inline-flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    /* footer */
+    .footer {
+      margin-top: 28px;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="badge">Document Router</div>
+  <h1>文档分发服务</h1>
+  <p class="subtitle">解析 URL 参数，自动跳转至对应语言版本的用户协议或隐私政策。</p>
+
+  <!-- 参数状态 -->
+  <div class="status-box" id="statusBox">
+    <div class="status-row">
+      <span class="status-label">content_type</span>
+      <span class="status-value" id="sv-type">—</span>
+    </div>
+    <div class="status-row">
+      <span class="status-label">language</span>
+      <span class="status-value" id="sv-lang">—</span>
+    </div>
+    <div class="status-row">
+      <span class="status-label">pack_name</span>
+      <span class="status-value" id="sv-pack">—</span>
+    </div>
+    <div class="status-row">
+      <span class="status-label">app_name</span>
+      <span class="status-value" id="sv-app">—</span>
+    </div>
+  </div>
+
+  <!-- 错误提示 -->
+  <div class="notice" id="notice">
+    <span class="notice-icon">⚠</span>
+    <div>
+      <div>缺少必要参数，无法完成跳转：</div>
+      <div class="missing-list" id="missingList"></div>
+    </div>
+  </div>
+
+  <!-- 目标 URL 预览 -->
+  <div class="url-preview" id="urlPreview">—</div>
+
+  <!-- 进度条 -->
+  <div class="redirect-bar"><div class="redirect-bar-fill" id="barFill"></div></div>
+
+  <!-- 操作按钮 -->
+  <div class="action">
+    <button class="btn btn-primary" id="btnGo" disabled>正在解析…</button>
+    <button class="btn btn-ghost" id="btnCancel" style="display:none">取消跳转</button>
+  </div>
+
+  <div class="footer">自动跳转倒计时 3 秒 &nbsp;·&nbsp; Document Distribution Service</div>
+</div>
+
+<script>
+(function () {
+  /* ── 1. 解析参数 ── */
+  const sp = new URLSearchParams(location.search);
+  const contentType = sp.get('content_type') || '';
+  const language    = sp.get('language')     || '';
+  const packName    = sp.get('pack_name')    || '';
+  const appName     = sp.get('app_name')     || '';
+
+  /* ── 2. 填充状态面板 ── */
+  const typeMap = { ua: { label: '用户协议 (UA)', cls: 'tag-ua' }, pp: { label: '隐私政策 (PP)', cls: 'tag-pp' } };
+
+  function fillStatus (id, value, extra) {
+    const el = document.getElementById(id);
+    if (!value) { el.innerHTML = '<span class="tag tag-miss">缺失</span>'; return; }
+    el.textContent = value;
+    if (extra) el.insertAdjacentHTML('beforeend', ' ' + extra);
+  }
+
+  const typeInfo = typeMap[contentType.toLowerCase()];
+  fillStatus('sv-type', contentType, typeInfo ? `<span class="tag ${typeInfo.cls}">${typeInfo.label}</span>` : '<span class="tag tag-miss">未知类型</span>');
+  fillStatus('sv-lang', language);
+  fillStatus('sv-pack', packName);
+  fillStatus('sv-app',  appName || '（未传入）');
+
+  /* ── 3. 校验必填参数 ── */
+  const required = { content_type: contentType, language, pack_name: packName };
+  const missing  = Object.entries(required).filter(([, v]) => !v).map(([k]) => k);
+
+  if (missing.length) {
+    const notice = document.getElementById('notice');
+    notice.classList.add('show');
+    document.getElementById('missingList').innerHTML =
+      missing.map(k => `<span class="tag tag-miss">${k}</span>`).join('');
+    document.getElementById('btnGo').textContent = '参数不完整';
+    document.getElementById('urlPreview').textContent = '无法生成目标地址';
+    return;
+  }
+
+  /* ── 4. 拼接目标 URL ── */
+  // 当前 HTML 所在路径（去掉文件名，保留目录斜杠）
+  const basePath = location.href.split('?')[0].replace(/\/[^/]*$/, '/');
+
+  // 构建目标文件路径
+  const targetFile = `${packName}/${contentType}_${language}.html`;
+
+  // 其他参数原样透传（排除已使用的四个）
+  const passThrough = new URLSearchParams(sp);
+  ['content_type', 'language', 'pack_name', 'app_name'].forEach(k => passThrough.delete(k));
+  const queryStr = passThrough.toString() ? '?' + passThrough.toString() : '';
+
+  const targetUrl = basePath + targetFile + queryStr;
+
+  /* ── 5. 渲染 URL 预览（语法高亮） ── */
+  const preview = document.getElementById('urlPreview');
+  preview.innerHTML =
+    `<span class="hl-path">${escHtml(basePath)}</span>` +
+    `<span class="hl-file">${escHtml(targetFile)}</span>` +
+    (queryStr ? `<span class="hl-query">${escHtml(queryStr)}</span>` : '');
+
+  /* ── 6. 按钮逻辑 + 自动跳转倒计时 ── */
+  const btnGo     = document.getElementById('btnGo');
+  const btnCancel = document.getElementById('btnCancel');
+  const barFill   = document.getElementById('barFill');
+  const DELAY     = 3000; // ms
+
+  btnGo.disabled        = false;
+  btnCancel.style.display = 'block';
+
+  let elapsed  = 0;
+  let cancelled = false;
+  const TICK   = 50;
+
+  const timer = setInterval(() => {
+    if (cancelled) return;
+    elapsed += TICK;
+    const pct = Math.min((elapsed / DELAY) * 100, 100);
+    barFill.style.width = pct + '%';
+    const sec = Math.ceil((DELAY - elapsed) / 1000);
+    btnGo.textContent = `立即跳转  (${sec})`;
+    if (elapsed >= DELAY) {
+      clearInterval(timer);
+      doRedirect();
+    }
+  }, TICK);
+
+  btnGo.addEventListener('click', () => {
+    clearInterval(timer);
+    doRedirect();
+  });
+
+  btnCancel.addEventListener('click', () => {
+    cancelled = true;
+    clearInterval(timer);
+    btnGo.textContent = '立即跳转';
+    btnCancel.style.display = 'none';
+    barFill.style.width = '0%';
+    btnGo.addEventListener('click', doRedirect, { once: true });
+  });
+
+  function doRedirect () {
+    location.href = targetUrl;
+  }
+
+  /* ── 工具函数 ── */
+  function escHtml (str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+})();
+</script>
+</body>
+</html>
