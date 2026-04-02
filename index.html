@@ -9,8 +9,17 @@
   (function () {
     var sp = new URLSearchParams(location.search);
     var contentType = sp.get('content_type') || '';
-    var language    = sp.get('language')     || '';
-    var packName    = sp.get('pack_name')    || '';
+    var rawLang = (sp.get('language') || '').trim();
+    var packName = sp.get('pack_name') || '';
+
+    // Only zh / en are available; anything else falls back to English.
+    var language = 'en';
+    if (rawLang) {
+      var norm = rawLang.toLowerCase().replace(/_/g, '-');
+      if (norm === 'zh' || norm.indexOf('zh-') === 0) {
+        language = 'zh';
+      }
+    }
 
     var basePath = location.href.split('?')[0].replace(/\/[^/]*$/, '/');
 
